@@ -3,7 +3,6 @@
 import Meyda from "meyda";
 import { useEffect, useRef, useState } from "react";
 
-// === カラーマップ定義 ===
 type ColorMapFunc = (value: number) => string;
 
 const colorMaps: { [key: string]: ColorMapFunc } = {
@@ -36,6 +35,7 @@ const colorMaps: { [key: string]: ColorMapFunc } = {
 		return `rgb(${r}, ${g}, ${b})`;
 	},
 };
+
 export default function SpectrogramCanvas() {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -45,7 +45,6 @@ export default function SpectrogramCanvas() {
 	const [colorMapName, setColorMapName] = useState("inferno");
 
 	useEffect(() => {
-		// マイク一覧取得
 		navigator.mediaDevices.getUserMedia({ audio: true }).then(() => {
 			navigator.mediaDevices.enumerateDevices().then((allDevices) => {
 				const audioInputs = allDevices.filter((d) => d.kind === "audioinput");
@@ -82,11 +81,10 @@ export default function SpectrogramCanvas() {
 					source,
 					bufferSize,
 					featureExtractors: ["amplitudeSpectrum"],
-					callback: (features) => {
+					callback: (features: { amplitudeSpectrum: number[] }) => {
 						const spectrum = features.amplitudeSpectrum;
 						if (!spectrum || !ctx) return;
 
-						// 左にスクロール
 						const imageData = ctx.getImageData(
 							1,
 							0,
@@ -97,7 +95,6 @@ export default function SpectrogramCanvas() {
 
 						const colorMap = colorMaps[colorMapName];
 
-						// 右端に描画
 						for (let i = 0; i < spectrum.length; i++) {
 							const value = Math.min(spectrum[i] * 255, 255);
 							if (value === 0) continue;
@@ -119,34 +116,36 @@ export default function SpectrogramCanvas() {
 	}, [selectedDeviceId, colorMapName]);
 
 	return (
-		<div className="flex flex-col items-center justify-center gap-4 p-4">
-			{/* デバイス選択 */}
-			<select
-				className="p-2 rounded bg-black text-white border border-white"
-				onChange={(e) => setSelectedDeviceId(e.target.value)}
-				value={selectedDeviceId}
-			>
-				{devices.map((device) => (
-					<option key={device.deviceId} value={device.deviceId}>
-						{device.label || `Microphone (${device.deviceId})`}
-					</option>
-				))}
-			</select>
+		<div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-4 rounded p-6 shadow">
+			<h1 className="font-bold text-2xl">BowMaster Visualizer</h1>
 
-			{/* カラーマップ選択 */}
-			<select
-				className="p-2 rounded bg-black text-white border border-white"
-				onChange={(e) => setColorMapName(e.target.value)}
-				value={colorMapName}
-			>
-				{Object.keys(colorMaps).map((name) => (
-					<option key={name} value={name}>
-						{name}
-					</option>
-				))}
-			</select>
+			<div className="flex w-full flex-col justify-center gap-4 md:flex-row">
+				<select
+					className="rounded border border-gray-400 p-2 "
+					onChange={(e) => setSelectedDeviceId(e.target.value)}
+					value={selectedDeviceId}
+				>
+					{devices.map((device) => (
+						<option key={device.deviceId} value={device.deviceId}>
+							{device.label || `Microphone (${device.deviceId})`}
+						</option>
+					))}
+				</select>
 
-			<canvas ref={canvasRef} className="border border-white" />
+				<select
+					className="rounded border border-gray-400 p-2 "
+					onChange={(e) => setColorMapName(e.target.value)}
+					value={colorMapName}
+				>
+					{Object.keys(colorMaps).map((name) => (
+						<option key={name} value={name}>
+							{name}
+						</option>
+					))}
+				</select>
+			</div>
+
+			<canvas ref={canvasRef} className="rounded border border-gray-500" />
 		</div>
 	);
 }
