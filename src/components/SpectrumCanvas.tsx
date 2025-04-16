@@ -3,12 +3,11 @@
 import { useEffect, useRef } from "react";
 
 interface Props {
-  width: number;
-  height: number;
   deviceId: string;
+  baseFreq: number;
 }
 
-export default function SpectrumCanvas({ width, height, deviceId }: Props) {
+export default function SpectrumCanvas({ deviceId, baseFreq }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -20,70 +19,70 @@ export default function SpectrumCanvas({ width, height, deviceId }: Props) {
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Float32Array(bufferLength);
 
-    navigator.mediaDevices
-      .getUserMedia({ audio: { deviceId } })
-      .then((stream) => {
-        const source = audioCtx.createMediaStreamSource(stream);
-        source.connect(analyser);
+    let stream: MediaStream;
 
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d");
-        const baseFreq = 442;
+    navigator.mediaDevices.getUserMedia({ audio: { deviceId } }).then((s) => {
+      stream = s;
+      const source = audioCtx.createMediaStreamSource(s);
+      source.connect(analyser);
 
-        const draw = () => {
-          requestAnimationFrame(draw);
-          analyser.getFloatFrequencyData(dataArray);
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
 
-          if (!ctx || !canvas) return;
+      const draw = () => {
+        requestAnimationFrame(draw);
+        analyser.getFloatFrequencyData(dataArray);
 
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!ctx || !canvas) return;
 
-          const minHz = 300;
-          const maxHz = 2000;
+        const { width, height } = canvas;
+        ctx.clearRect(0, 0, width, height);
 
-          for (let i = 0; i < bufferLength; i++) {
-            const freq = (i * audioCtx.sampleRate) / analyser.fftSize;
-            if (freq < minHz || freq > maxHz) continue;
+        const minHz = 300;
+        const maxHz = 2000;
 
-            const x = ((freq - minHz) / (maxHz - minHz)) * canvas.width;
-            const y =
-              canvas.height - ((dataArray[i] + 140) / 100) * canvas.height;
+        for (let i = 0; i < bufferLength; i++) {
+          const freq = (i * audioCtx.sampleRate) / analyser.fftSize;
+          if (freq < minHz || freq > maxHz) continue;
 
-            ctx.fillStyle = "lime";
-            ctx.fillRect(x, y, 2, 2);
-          }
+          const x = ((freq - minHz) / (maxHz - minHz)) * width;
+          const y = height - ((dataArray[i] + 140) / 100) * height;
 
-          // 倍音ガイド（1〜4倍音）
-          for (const n of [1, 2, 3, 4]) {
-            const f = baseFreq * n;
-            const x = ((f - minHz) / (maxHz - minHz)) * canvas.width;
-            ctx.strokeStyle = "red";
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, canvas.height);
-            ctx.stroke();
+          ctx.fillStyle = "lime";
+          ctx.fillRect(x, y, 2, 2);
+        }
 
-            ctx.fillStyle = "red";
-            ctx.fillText(`${n}倍音`, x + 4, 12 + 12 * (n - 1));
-          }
-        };
+        // 倍音ガイド（1〜4倍音）
+        for (const n of [1, 2, 3, 4]) {
+          const f = baseFreq * n;
+          const x = ((f - minHz) / (maxHz - minHz)) * width;
+          ctx.strokeStyle = "red";
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
 
-        draw();
-      });
+          ctx.fillStyle = "red";
+          ctx.fillText(`${n}倍音`, x + 4, 12 + 12 * (n - 1));
+        }
+      };
+
+      draw();
+    });
 
     return () => {
       audioCtx.close();
+      if (stream) {
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
+      }
     };
-  }, [deviceId]);
+  }, [deviceId, baseFreq]);
 
   return (
     <div className="h-full w-full bg-black">
-      <canvas
-        ref={canvasRef}
-        width={width}
-        height={height}
-        className="h-full w-full"
-      />
+      <canvas ref={canvasRef} className="h-full w-full" />
     </div>
   );
 }

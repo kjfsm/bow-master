@@ -1,64 +1,43 @@
 "use client";
 
-import SettingsDialog from "@/components/SettingsDialog";
+import Border from "@/components/Border";
+import Settings from "@/components/Settings";
 import SpectrumCanvas from "@/components/SpectrumCanvas";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
+export type Config = {
+  deviceId: string;
+  baseFreq: number;
+  tuningSystem: string;
+};
 
 export default function Home() {
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<Config>({
     deviceId: "",
     baseFreq: 442,
-    tuningSystem: "equal",
+    tuningSystem: "just",
   });
 
-  // 🎯 SSRとクライアント差を避けるため、初期値は固定
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
-  const [ready, setReady] = useState(false); // 初期は描画させない
-
-  useEffect(() => {
-    // クライアントマウント時に実サイズ取得
-    const updateSize = () => {
-      setCanvasSize({
-        width: window.innerWidth,
-        height: window.innerHeight - 120, // ヘッダー分などを考慮
-      });
-      setReady(true);
-    };
-
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, []);
-
   return (
-    <div className="flex h-screen w-screen flex-col items-center bg-gray-50 text-gray-900">
-      <header className="flex w-full items-center justify-between border-b bg-white px-4 py-2 shadow-sm">
-        <h1 className="font-bold text-xl">バイオリン音色スペクトラム</h1>
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="rounded bg-blue-500 px-4 py-1 text-sm text-white hover:bg-blue-600"
-        >
-          設定
-        </button>
-      </header>
-
-      <main className="flex w-full flex-1 items-center justify-center">
-        {ready && (
+    <div className="flex h-screen w-screen flex-col">
+      {/* ヘッダー */}
+      <Border className="border-red-400">
+        <header className="sticky top-0 z-10 w-full border-b bg-white px-4 py-2 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="font-bold text-xl">バイオリン音色スペクトラム</h1>
+          </div>
+        </header>
+      </Border>
+      {/* メインコンテンツ */}
+      <Border className="border-blue-400">
+        <Settings config={config} setConfig={setConfig} />
+        <main className="h-full w-full">
           <SpectrumCanvas
-            width={canvasSize.width}
-            height={canvasSize.height}
             deviceId={config.deviceId}
+            baseFreq={config.baseFreq}
           />
-        )}
-      </main>
-
-      <SettingsDialog
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onApply={(newConfig) => setConfig(newConfig)}
-      />
+        </main>
+      </Border>
     </div>
   );
 }
