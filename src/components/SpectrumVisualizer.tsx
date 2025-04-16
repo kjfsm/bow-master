@@ -40,7 +40,7 @@ export default function SpectrumVisualizer() {
   return (
     <div className="">
       <Settings config={config} setConfig={setConfig} />
-      <main className="">
+      <main className="flex h-screen flex-grow flex-col">
         <SpectrumCanvas deviceId={config.deviceId} baseFreq={config.baseFreq} />
       </main>
     </div>

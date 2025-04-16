@@ -97,7 +97,7 @@ export default function SpectrumCanvas({ deviceId, baseFreq }: Props) {
 
   return (
     <div className=" bg-black">
-      <canvas ref={canvasRef} className="" />
+      <canvas ref={canvasRef} className=" w-full flex-grow" />
     </div>
   );
 }
