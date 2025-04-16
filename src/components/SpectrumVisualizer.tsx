@@ -11,7 +11,7 @@ export type Config = {
 };
 
 const defaultConfig: Config = {
-  deviceId: "",
+  deviceId: "default",
   baseFreq: 442,
   tuningSystem: "just",
 };
@@ -19,26 +19,21 @@ const defaultConfig: Config = {
 export default function SpectrumVisualizer() {
   const [config, setConfig] = useState<Config>(defaultConfig);
 
-  // 初期値をlocalStorageから取得
-  // localStorageのconfigを読み、型がConfigと一致する場合のみセット
   useEffect(() => {
-    const savedConfig = localStorage.getItem("config");
-    if (savedConfig) {
-      const parsedConfig: Config = JSON.parse(savedConfig);
-      if (
-        parsedConfig.deviceId &&
-        parsedConfig.baseFreq &&
-        parsedConfig.tuningSystem
-      ) {
-        setConfig(parsedConfig);
-      } else {
-        // localStorageのconfigが不正な場合、デフォルト値をセット
-        setConfig(defaultConfig);
-      }
+    const storedConfig = localStorage.getItem("config");
+    if (storedConfig) {
+      const parsedConfig = JSON.parse(storedConfig);
+      setConfig((prev) => ({
+        ...prev,
+        ...parsedConfig,
+      }));
+    } else {
+      console.log("No config found in localStorage, using default config.");
     }
   }, []);
 
   useEffect(() => {
+    console.log("Config updated, saving to localStorage:", config);
     localStorage.setItem("config", JSON.stringify(config));
   }, [config]);
 
