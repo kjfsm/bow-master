@@ -6,6 +6,6 @@ export default function Border({
   children: React.ReactNode;
 }) {
   return (
-    <div className={` border-2 ${className} border-solid`}>{children}</div>
+    <div className={` border-4 ${className} m-4 border-dashed`}>{children}</div>
   );
 }

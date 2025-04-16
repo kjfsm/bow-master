@@ -1,6 +1,6 @@
 "use client";
 
-import type { Config } from "@/app/page";
+import type { Config } from "@/components/SpectrumVisualizer";
 import { useEffect, useState } from "react";
 
 interface Props {

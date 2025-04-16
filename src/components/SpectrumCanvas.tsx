@@ -77,12 +77,27 @@ export default function SpectrumCanvas({ deviceId, baseFreq }: Props) {
           track.stop();
         }
       }
+
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+
+      const updateCanvasSize = () => {
+        const dpr = window.devicePixelRatio || 1;
+        const parent = canvas?.parentElement;
+        if (parent) {
+          canvas.width = parent.clientWidth * dpr;
+          canvas.height = parent.clientHeight * dpr;
+          ctx?.scale(dpr, dpr);
+        }
+      };
+
+      window.removeEventListener("resize", updateCanvasSize);
     };
   }, [deviceId, baseFreq]);
 
   return (
-    <div className="h-full w-full bg-black">
-      <canvas ref={canvasRef} className="h-full w-full" />
+    <div className=" bg-black">
+      <canvas ref={canvasRef} className="" />
     </div>
   );
 }
