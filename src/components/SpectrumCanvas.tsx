@@ -1,103 +1,105 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getAudioStream } from "../utils/audioUtils";
 
 interface Props {
   deviceId: string;
   baseFreq: number;
+  className?: string;
 }
 
-export default function SpectrumCanvas({ deviceId, baseFreq }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export default function SpectrumCanvas({
+  deviceId,
+  baseFreq,
+  className,
+}: Props) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    if (!deviceId) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const audioCtx = new AudioContext();
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Float32Array(bufferLength);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    let stream: MediaStream;
+    const dpr = window.devicePixelRatio || 1;
+    const parent = canvas.parentElement;
+    if (!parent) return;
 
-    navigator.mediaDevices.getUserMedia({ audio: { deviceId } }).then((s) => {
-      stream = s;
-      const source = audioCtx.createMediaStreamSource(s);
-      source.connect(analyser);
+    canvas.width = parent.clientWidth * dpr;
+    canvas.height = parent.clientHeight * dpr;
+    ctx.scale(dpr, dpr);
 
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext("2d");
+    let audioContext: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
+    let animationFrameId: number;
 
-      const draw = () => {
-        requestAnimationFrame(draw);
-        analyser.getFloatFrequencyData(dataArray);
+    const drawSpectrum = (dataArray: Uint8Array) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (!ctx || !canvas) return;
-
-        const { width, height } = canvas;
-        ctx.clearRect(0, 0, width, height);
-
-        const minHz = 300;
-        const maxHz = 2000;
-
-        for (let i = 0; i < bufferLength; i++) {
-          const freq = (i * audioCtx.sampleRate) / analyser.fftSize;
-          if (freq < minHz || freq > maxHz) continue;
-
-          const x = ((freq - minHz) / (maxHz - minHz)) * width;
-          const y = height - ((dataArray[i] + 140) / 100) * height;
-
-          ctx.fillStyle = "lime";
-          ctx.fillRect(x, y, 2, 2);
+      // Draw spectrum
+      ctx.beginPath();
+      ctx.strokeStyle = "green";
+      ctx.lineWidth = 2;
+      const barWidth = parent.clientWidth / dataArray.length;
+      dataArray.forEach((value, index) => {
+        const x = index * barWidth;
+        const y = parent.clientHeight - (value / 255) * parent.clientHeight;
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
         }
+      });
+      ctx.stroke();
 
-        // 倍音ガイド（1〜4倍音）
-        for (const n of [1, 2, 3, 4]) {
-          const f = baseFreq * n;
-          const x = ((f - minHz) / (maxHz - minHz)) * width;
-          ctx.strokeStyle = "red";
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, height);
-          ctx.stroke();
+      // Draw baseFreq line
+      const baseFreqX = (baseFreq / 1000) * parent.clientWidth; // Assuming baseFreq is normalized to 0-1000
+      ctx.beginPath();
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 1;
+      ctx.moveTo(baseFreqX, 0);
+      ctx.lineTo(baseFreqX, parent.clientHeight);
+      ctx.stroke();
+    };
 
-          ctx.fillStyle = "red";
-          ctx.fillText(`${n}倍音`, x + 4, 12 + 12 * (n - 1));
-        }
-      };
+    const startAudio = async () => {
+      audioContext = new AudioContext();
+      try {
+        const stream = await getAudioStream(deviceId);
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
 
-      draw();
-    });
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const renderFrame = () => {
+          analyser?.getByteFrequencyData(dataArray);
+          drawSpectrum(dataArray);
+          animationFrameId = requestAnimationFrame(renderFrame);
+        };
+
+        renderFrame();
+      } catch (error) {
+        console.error("Failed to start audio stream:", error);
+      }
+    };
+
+    startAudio();
 
     return () => {
-      audioCtx.close();
-      if (stream) {
-        for (const track of stream.getTracks()) {
-          track.stop();
-        }
+      if (audioContext) {
+        audioContext.close();
       }
-
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext("2d");
-
-      const updateCanvasSize = () => {
-        const dpr = window.devicePixelRatio || 1;
-        const parent = canvas?.parentElement;
-        if (parent) {
-          canvas.width = parent.clientWidth * dpr;
-          canvas.height = parent.clientHeight * dpr;
-          ctx?.scale(dpr, dpr);
-        }
-      };
-
-      window.removeEventListener("resize", updateCanvasSize);
+      cancelAnimationFrame(animationFrameId);
     };
   }, [deviceId, baseFreq]);
 
   return (
-    <div className=" bg-black">
-      <canvas ref={canvasRef} className=" w-full flex-grow" />
+    <div className={`bg-black ${className}`}>
+      <canvas ref={canvasRef} className="h-full w-full" />
     </div>
   );
 }

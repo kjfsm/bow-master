@@ -38,11 +38,13 @@ export default function SpectrumVisualizer() {
   }, [config]);
 
   return (
-    <div className="">
+    <div className="flex h-full flex-col">
       <Settings config={config} setConfig={setConfig} />
-      <main className="flex h-screen flex-grow flex-col">
-        <SpectrumCanvas deviceId={config.deviceId} baseFreq={config.baseFreq} />
-      </main>
+      <SpectrumCanvas
+        deviceId={config.deviceId}
+        baseFreq={config.baseFreq}
+        className="grow"
+      />
     </div>
   );
 }
